@@ -4,49 +4,82 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  newArtikel,
+  updatewSubtanceQuestionBanks,
   clearErrors,
-} from "/redux/actions/publikasi/artikel.actions";
-import { NEW_ARTIKEL_RESET } from "/redux/types/publikasi/artikel.type";
+} from "../../../../../redux/actions/subvit/subtance.actions";
+import { UPDATE_SUBTANCE_QUESTION_BANKS_RESET } from "../../../../../redux/types/subvit/subtance.type";
 
 import PageWrapper from "/components/wrapper/page.wrapper";
-import StepInput from "/components/StepInputClone";
+import StepInputPublish from "/components/StepInputPublish";
+import LoadingPage from "../../../../LoadingPage";
+
 import { useRouter } from "next/router";
 
 const StepOne = () => {
   const dispatch = useDispatch();
-  const importSwitch = () => import("bootstrap-switch-button-react");
-  const SwitchButton = dynamic(importSwitch, {
-    ssr: false,
-  });
   const router = useRouter();
 
-  const { loading, error, success } = useSelector((state) => state.newArtikel);
+  let { id } = router.query;
+  const { error: detailData, subtance } = useSelector(
+    (state) => state.detailSubtanceQuestionBanks
+  );
+  const { loading, error, isUpdated } = useSelector(
+    (state) => state.updateSubtanceQuestion
+  );
+
+  const [typeSave, setTypeSave] = useState("lanjut");
+  const [academy_id, setAcademyId] = useState(subtance.academy_id);
+  const [theme_id, setThemeId] = useState(subtance.theme_id);
+  const [training_id, setTrainingId] = useState(subtance.training_id);
+  const [category, setCategory] = useState(subtance.category);
 
   useEffect(() => {
-    // if (error) {
-    //     dispatch(clearErrors())
-    // }
-
-    if (success) {
+    if (isUpdated) {
       dispatch({
-        type: NEW_ARTIKEL_RESET,
+        type: UPDATE_SUBTANCE_QUESTION_BANKS_RESET,
       });
+      if (typeSave === "lanjut") {
+        router.push({
+          pathname: `/subvit/substansi/edit/step-2`,
+          query: { id },
+        });
+      } else if (typeSave === "draft") {
+        router.push({
+          pathname: `/subvit/substansi`,
+          query: { success: true },
+        });
+      }
     }
-  }, [dispatch, error, success]);
-
-  const [role, setRole] = useState("");
-
-  const saveAndContinue = () => {
-    router.push("/subvit/substansi/edit/step-2");
-  };
+  }, [dispatch, isUpdated, typeSave, router, id]);
 
   const saveDraft = () => {
-    router.push("/subvit/substansi");
+    setTypeSave("draft");
+    const data = {
+      academy_id,
+      theme_id,
+      training_id,
+      category,
+      _method: "put",
+    };
+
+    dispatch(updatewSubtanceQuestionBanks(id, data));
   };
 
   const onSubmit = (e) => {
     e.preventDefault();
+    setTypeSave("lanjut");
+
+    const data = {
+      academy_id,
+      theme_id,
+      training_id,
+      category,
+      _method: "put",
+    };
+
+    dispatch(updatewSubtanceQuestionBanks(id, data));
+
+    console.log(data);
   };
 
   return (
@@ -77,8 +110,9 @@ const StepOne = () => {
         ""
       )}
       <div className="col-lg-12 col-xxl-12 order-1 order-xxl-2 px-0">
+        {loading ? <LoadingPage loading={loading} /> : ""}
         <div className="card card-custom card-stretch gutter-b">
-          <StepInput step="1"></StepInput>
+          <StepInputPublish step="1"></StepInputPublish>
           <div className="card-header border-0">
             <h3 className="card-title font-weight-bolder text-dark">
               Edit Test Substansi
@@ -97,12 +131,15 @@ const StepOne = () => {
                   <select
                     name="academy_id"
                     id=""
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setAcademyId(e.target.value)}
                     className="form-control"
                   >
-                    <option selected> -Pilih Akademi -</option>
-                    <option value="1"> Computer Scientist </option>
-                    <option value="1"> Designer </option>
+                    <option> -Pilih Akademi -</option>
+                    <option value="1" selected>
+                      {" "}
+                      Computer Scientist{" "}
+                    </option>
+                    <option value="2"> Designer </option>
                   </select>
                   <span className="text-muted">Silahkan Pilih Akademi</span>
                 </div>
@@ -119,12 +156,15 @@ const StepOne = () => {
                   <select
                     name="the_id"
                     id=""
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setThemeId(e.target.value)}
                     className="form-control"
                   >
-                    <option selected> -Pilih Tema-</option>
-                    <option value="1"> Cloud Computing </option>
-                    <option value="1"> UI/UX Designer </option>
+                    <option> -Pilih Tema-</option>
+                    <option value="1" selected>
+                      {" "}
+                      Cloud Computing{" "}
+                    </option>
+                    <option value="2"> UI/UX Designer </option>
                   </select>
                   <span className="text-muted">Silahkan Pilih Tema</span>
                 </div>
@@ -141,12 +181,15 @@ const StepOne = () => {
                   <select
                     name="training_id"
                     id=""
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setTrainingId(e.target.value)}
                     className="form-control"
                   >
-                    <option selected> -Pilih Pelatihan-</option>
-                    <option value="1"> Google Cloud Computing </option>
-                    <option value="1"> Adobe UI/UX Designer </option>
+                    <option> -Pilih Pelatihan-</option>
+                    <option value="1" selected>
+                      {" "}
+                      Google Cloud Computing{" "}
+                    </option>
+                    <option value="2"> Adobe UI/UX Designer </option>
                   </select>
                   <span className="text-muted">Silahkan Pilih Pelatihan</span>
                 </div>
@@ -163,11 +206,14 @@ const StepOne = () => {
                   <select
                     name="category"
                     id=""
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setCategory(e.target.value)}
                     className="form-control"
                   >
-                    <option selected> -Pilih Kategori-</option>
-                    <option value="tes_substansi"> Tes Substansi </option>
+                    <option> -Pilih Kategori-</option>
+                    <option value="tes_substansi" selected>
+                      {" "}
+                      Tes Substansi{" "}
+                    </option>
                     <option value="mid_tes"> Mid Tes </option>
                   </select>
                   <span className="text-muted">Silahkan Pilih Kategori</span>
@@ -177,15 +223,13 @@ const StepOne = () => {
               <div className="form-group row">
                 <div className="col-sm-2"></div>
                 <div className="col-sm-10 text-right">
-                  <button
-                    className="btn btn-light-primary btn-sm mr-2"
-                    onClick={saveAndContinue}
-                  >
+                  <button className="btn btn-light-primary btn-sm mr-2">
                     Simpan & Lanjut
                   </button>
                   <button
                     className="btn btn-primary btn-sm"
                     onClick={saveDraft}
+                    type="button"
                   >
                     Simpan Draft
                   </button>

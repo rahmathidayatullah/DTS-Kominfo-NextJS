@@ -3,96 +3,145 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link'
 import Image from 'next/image'
 import dynamic from "next/dynamic";
+import { useRouter } from "next/router";
 import { useDispatch, useSelector } from 'react-redux'
+import SimpleReactValidator from "simple-react-validator";
+import Swal from "sweetalert2";
+import { TagsInput } from "react-tag-input-component";
 
 import { newVideo, clearErrors } from '../../../../redux/actions/publikasi/video.actions'
 import { NEW_VIDEO_RESET } from '../../../../redux/types/publikasi/video.type'
-
+import { getAllKategori } from "../../../../redux/actions/publikasi/kategori.actions";
 import PageWrapper from '../../../wrapper/page.wrapper';
 import LoadingPage from '../../../LoadingPage';
 
 const TambahVidio = () => {
     const editorRef = useRef()
     const dispatch = useDispatch()
+    const router = useRouter();
 
     const importSwitch = () => import('bootstrap-switch-button-react')
+    const [editorLoaded, setEditorLoaded] = useState(false)
 
     const SwitchButton = dynamic(importSwitch, {
         ssr: false
     })
+    const simpleValidator = useRef(new SimpleReactValidator({ locale: "id" }));
 
     const { loading, error, success } = useSelector(state => state.newVideo)
+    const {
+        loading: allLoading,
+        error: allError,
+        kategori,
+      } = useSelector((state) => state.allKategori);
 
     useEffect(() => {
-
+        dispatch(getAllKategori());
         // if (error) {
         //     dispatch(clearErrors())
         // }
 
+        // if (success) {
+        //     setKategoriId('')
+        //     setJudulVideo('')
+        //     setIsiVideo('')
+        //     setUrlVideo('')
+        //     setGambar('')
+        //     setPublish(false)
+        //     setTag('')
+        //     setGambarPreview('/assets/media/default.jpg')
+        //     // dispatch({
+        //     //     type: NEW_ARTIKEL_RESET
+        //     // })
+        // }
+
+        // setEditorLoaded(true)
         if (success) {
-            setKategoriId('')
-            setJudulVideo('')
-            setIsiVideo('')
-            setUrlVideo('')
-            setGambar('')
-            setPublish(false)
-            setTag('')
-            setGambarPreview('/assets/media/default.jpg')
-            // dispatch({
-            //     type: NEW_ARTIKEL_RESET
-            // })
+            router.push({
+                pathname: `/publikasi/video`,
+                query: { success: true }
+            })
         }
 
-    }, [dispatch, error, success]);
+    }, [dispatch, error, success, router]);
 
 
     const [kategori_id, setKategoriId] = useState('')
-    const [users_id, setUserId] = useState(1)
+    const [users_id, setUserId] = useState(3)
     const [judul_video, setJudulVideo] = useState('')
     const [isi_video, setIsiVideo] = useState('');
     const [url_video, setUrlVideo] = useState('')
     const [gambar, setGambar] = useState('')
     const [tag, setTag] = useState('')
     const [gambarPreview, setGambarPreview] = useState('/assets/media/default.jpg')
+    const [gambarName, setGambarName] = useState (null)
     const [publish, setPublish] = useState(false)
 
     const onChangeGambar = (e) => {
-        if (e.target.name === 'gambar') {
-            const reader = new FileReader()
-            reader.onload = () => {
-                if (reader.readyState === 2) {
-                    setGambar(reader.result)
-                    setGambarPreview(reader.result)
-                }
+        const type = ["image/jpg", "image/png", "image/jpeg"]
+        // console.log (e.target.files[0])
+        // console.log ("check")
+
+        if (type.includes (e.target.files[0].type)){
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (reader.readyState === 2) {
+            setGambar(reader.result);
+            setGambarPreview(reader.result);
             }
-            reader.readAsDataURL(e.target.files[0])
-        }
+        };
+        reader.readAsDataURL(e.target.files[0])
+        setGambarName(e.target.files[0].name)
+        // console.log (reader.readAsDataURL(e.target.files[0]))
+        } 
+
+        // if (e.target.name === 'gambar') {
+        //     const reader = new FileReader()
+        //     reader.onload = () => {
+        //         if (reader.readyState === 2) {
+        //             setGambar(reader.result)
+        //             setGambarPreview(reader.result)
+        //         }
+        //     }
+        //     reader.readAsDataURL(e.target.files[0])
+        // }
     }
 
     const onSubmit = (e) => {
         e.preventDefault()
-        if (error) {
-            dispatch(clearErrors())
-        }
-        if (success) {
-            dispatch({
-                type: NEW_VIDEO_RESET
-            })
-        }
-
-        const data = {
-            kategori_id,
-            users_id,
-            judul_video,
-            isi_video,
-            url_video,
-            gambar,
-            tag,
-            publish
-        }
-
-        dispatch(newVideo(data))
-        console.log(data)
+        if (simpleValidator.current.allValid()){
+            if (error) {
+                dispatch(clearErrors())
+            }
+            if (success) {
+                dispatch({
+                    type: NEW_VIDEO_RESET
+                })
+            }
+    
+            const data = {
+                kategori_id,
+                users_id,
+                judul_video,
+                isi_video,
+                url_video,
+                gambar,
+                tag,
+                publish
+            }
+    
+            dispatch(newVideo(data))
+            console.log(data)
+        } else {
+            simpleValidator.current.showMessages();
+            forceUpdate(1);
+            Swal.fire({
+              icon: "error",
+              title: "Oops...",
+              text: "Isi data dengan benar !",
+            });
+          }
+        
     }
 
     const onNewReset = () => {
@@ -140,15 +189,16 @@ const TambahVidio = () => {
                             <div className="form-group row">
                                 <label htmlFor="staticEmail" className="col-sm-2 col-form-label">Judul</label>
                                 <div className="col-sm-10">
-                                    <input type="text" className="form-control" placeholder="Isi Judul disini" value={judul_video} onChange={(e) => setJudulVideo(e.target.value)} />
+                                    <input type="text" className="form-control" placeholder="Isi Judul disini" value={judul_video} onChange={(e) => setJudulVideo(e.target.value)}/>
                                 </div>
                             </div>
 
                             <div className="form-group row">
                                 <label htmlFor="staticEmail" className="col-sm-2 col-form-label">Deskripsi Video</label>
                                 <div className="col-sm-10">
-                                    <textarea className='form-control' placeholder='isi deskripsi video disini' name="deskripsi" id="" rows="10" onChange={e => setIsiVideo(e.target.value)} value={isi_video}></textarea>
-                                    <small className='text-danger'>*Maksimal 160 Karakter</small>
+                                    <textarea className='form-control' placeholder='isi deskripsi video disini' name="deskripsi" id="" rows="10" onChange={e => setIsiVideo(e.target.value)} value={isi_video} onBlur={() => simpleValidator.current.showMessageFor("isi_video")}></textarea>
+                                    {simpleValidator.current.message("isi_video",isi_video,"required|max:160|min:50",{ className: "text-danger" })}
+                                    <small className='text-danger'>*Minimum 50 Karakter dan Maksimal 160 Karakter</small>
                                 </div>
                             </div>
 
@@ -167,10 +217,16 @@ const TambahVidio = () => {
                                 <div className="col-sm-9">
                                     <div className="input-group">
                                         <div className="custom-file">
-                                            <input type="file" name='gambar' className="custom-file-input" id="inputGroupFile04" onChange={onChangeGambar} />
-                                            <label className="custom-file-label" htmlFor="inputGroupFile04">Choose file</label>
+                                            <input type="file" name='gambar' className="custom-file-input" id="inputGroupFile04" accept="image/*" onChange={onChangeGambar} />
+                                            <label className="custom-file-label" htmlFor="inputGroupFile04">Pilih File</label>
                                         </div>
                                     </div>
+                                    {
+                                        gambarName !== null ?
+                                            <small className="text-danger">{gambarName}</small>
+                                        :
+                                            null
+                                    }
                                 </div>
                             </div>
 
@@ -187,24 +243,69 @@ const TambahVidio = () => {
                             </div>
 
                             <div className="form-group row">
-                                <label htmlFor="staticEmail" className="col-sm-2 col-form-label">Kategori</label>
+                                <label
+                                    htmlFor="staticEmail"
+                                    className="col-sm-2 col-form-label"
+                                >
+                                    Kategori
+                                </label>
                                 <div className="col-sm-10">
-                                    <select name="" id="" className='form-control' value={kategori_id} onChange={e => setKategoriId(e.target.value)} onBlur={e => setKategoriId(e.target.value)} >
-                                        <option value="1">Kategori</option>
-                                        <option value="2">Kategori 2</option>
+                                    <select
+                                    name=""
+                                    id=""
+                                    className="form-control"
+                                    value={kategori_id}
+                                    onChange={(e) => setKategoriId(e.target.value)}
+                                    onBlur={(e) => {
+                                        setKategoriId(e.target.value);
+                                        simpleValidator.current.showMessageFor("kategori_id");
+                                    }}
+                                    >
+                                    <option selected disabled value="">
+                                        -- Kategori --
+                                    </option>
+                                    {!kategori || (kategori && kategori.length === 0) ? (
+                                        <option value="">Data kosong</option>
+                                    ) : (
+                                        kategori &&
+                                        kategori.kategori &&
+                                        kategori.kategori.map((row) => {
+                                            return (
+                                                row.jenis_kategori == "Video" ?
+                                                  <option key={row.id} value={row.id}>
+                                                    {row.nama_kategori}
+                                                  </option>
+                                                :
+                                                  null
+                                              );
+                                        })
+                                    )}
                                     </select>
+                                    {simpleValidator.current.message(
+                                    "kategori_id",
+                                    kategori_id,
+                                    "required",
+                                    { className: "text-danger" }
+                                    )}
                                 </div>
                             </div>
 
                             <div className="form-group row">
                                 <label htmlFor="staticEmail" className="col-sm-2 col-form-label">Tag</label>
                                 <div className="col-sm-10">
-                                    <input type="text" className="form-control" placeholder="Isi Tag disini" value={tag} onChange={e => setTag(e.target.value)} />
+                                    <TagsInput
+                                        value={tag}
+                                        onChange={setTag}
+                                        name="fruits"
+                                        placeHolder="Isi Tag disini dan Enter"
+                                    // onBlur={() => simpleValidator.current.showMessageFor('tag')}
+                                    />
+                                    {/* <input type="text" className="form-control" placeholder="Isi Tag disini" value={tag} onChange={e => setTag(e.target.value)} /> */}
                                 </div>
                             </div>
 
                             <div className="form-group row">
-                                <label htmlFor="staticEmail" className="col-sm-2 col-form-label">Publish ?</label>
+                                <label htmlFor="staticEmail" className="col-sm-2 col-form-label">Publish</label>
                                 <div className="col-sm-1">
                                     <SwitchButton
                                         checked={publish}
@@ -225,7 +326,7 @@ const TambahVidio = () => {
                                     <Link href='/publikasi/video'>
                                         <a className='btn btn-outline-primary mr-2 btn-sm'>Kembali</a>
                                     </Link>
-                                    <button className='btn btn-primary btn-sm'>Submit</button>
+                                    <button className='btn btn-primary btn-sm'>Simpan</button>
                                 </div>
                             </div>
                         </form>

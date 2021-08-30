@@ -275,10 +275,10 @@ const StepTwo = () => {
                         <form onSubmit={onSubmit} id='form-upload'>
                             <div className="form-group row">
                                 <div className="col-sm-8 col-md-8">
-                                    <div class="custom-file">
-                                        <span>Gambar Pertanyaan (Opsional)</span>
-                                        <input type="file" class="custom-file-input" accept=".csv,.xlsx,.xls" name='question_image' onChange={e => setQuestionFile(e.target.files[0])} />
-                                        <label class="custom-file-label" for="customFile">
+                                    <div className="custom-file">
+                                        <span>Pertanyaan (Opsional)</span>
+                                        <input type="file" className="custom-file-input" accept=".csv,.xlsx,.xls" name='question_image' onChange={e => setQuestionFile(e.target.files[0])} />
+                                        <label className="custom-file-label" htmlFor="customFile">
                                             Choose file
                                         </label>
                                     </div>
@@ -291,10 +291,10 @@ const StepTwo = () => {
 
                             <div className="form-group row">
                                 <div className="col-sm-8 col-md-8">
-                                    <div class="custom-file">
+                                    <div className="custom-file">
                                         <span>Gambar Pertanyaan (Opsional)</span>
-                                        <input type="file" class="custom-file-input" accept=".zip" name='question_image' onChange={e => setImageFile(e.target.files[0])} />
-                                        <label class="custom-file-label" for="customFile">
+                                        <input type="file" className="custom-file-input" accept=".zip" name='question_image' onChange={e => setImageFile(e.target.files[0])} />
+                                        <label className="custom-file-label" htmlFor="customFile">
                                             Choose file
                                         </label>
                                     </div>
@@ -362,7 +362,7 @@ const StepTwo = () => {
                                                                 </span>
                                                             </td>
                                                             <td className="align-middle">
-                                                                {question.subtance_question_bank_id}
+                                                                CC{question.id}
                                                             </td>
                                                             <td className="align-middle">
                                                                 {question.question}
@@ -375,17 +375,17 @@ const StepTwo = () => {
                                                             </td>
                                                             <td className="align-middle">
                                                                 {question.status === true ? (
-                                                                    <span class="label label-inline label-light-success font-weight-bold">
+                                                                    <span className="label label-inline label-light-success font-weight-bold">
                                                                         Publish
                                                                     </span>
                                                                 ) : (
-                                                                    <span class="label label-inline label-light-warning font-weight-bold">
+                                                                    <span className="label label-inline label-light-warning font-weight-bold">
                                                                         Draft
                                                                     </span>
                                                                 )}
                                                             </td>
                                                             <td className="align-middle">
-                                                                <ButtonAction icon="write.svg" />
+                                                                <ButtonAction icon="write.svg" title='Edit' link={`edit-soal-substansi?id=${question.id}`} />
                                                                 <button
                                                                     onClick={() => handleDelete(question.id)}
                                                                     className="btn mr-1"
@@ -393,6 +393,9 @@ const StepTwo = () => {
                                                                         background: "#F3F6F9",
                                                                         borderRadius: "6px",
                                                                     }}
+                                                                    data-toggle="tooltip"
+                                                                    data-placement="bottom"
+                                                                    title="Hapus"
                                                                 >
                                                                     <Image
                                                                         alt="button-action"

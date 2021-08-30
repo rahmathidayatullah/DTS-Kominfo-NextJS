@@ -3,38 +3,92 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
-
+import Swal from "sweetalert2";
 import Pagination from "react-js-pagination";
-import { css } from "@emotion/react";
-import BeatLoader from "react-spinners/BeatLoader";
+import { useDispatch, useSelector } from "react-redux";
 
 import PageWrapper from "../../../wrapper/page.wrapper";
 import ButtonAction from "../../../ButtonAction";
+import LoadingTable from "../../../LoadingTable";
 
-import { useDispatch, useSelector } from "react-redux";
 import {
-  getAllSubtanceQuestionBanks,
+  deleteTriviaQuestionBanks,
   clearErrors,
-} from "/redux/actions/subvit/subtance.actions";
+} from "../../../../redux/actions/subvit/trivia-question.actions";
+import { DELETE_TRIVIA_QUESTION_BANKS_RESET } from "../../../../redux/types/subvit/trivia-question.type";
 
 const ListTrivia = () => {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  const { loading, error, subtance, perPage, total } = useSelector(
-    (state) => state.allSubtanceQuestionBanks
+  const { loading, error, trivia } = useSelector(
+    (state) => state.allTriviaQuestionBanks
   );
+  const {
+    loading: loadingDelete,
+    error: errorDelete,
+    isDeleted,
+  } = useSelector((state) => state.deleteTriviaQuestionBanks);
 
-  let { page = 1 } = router.query;
+  let { page = 1, success } = router.query;
   page = Number(page);
 
-  useEffect(() => {
-    dispatch(getAllSubtanceQuestionBanks());
-  }, [dispatch]);
+  const [search, setSearch] = useState("");
+  const [limit, setLimit] = useState(null);
 
-  const override = css`
-    margin: 0 auto;
-  `;
+  useEffect(() => {
+    if (isDeleted) {
+      Swal.fire("Berhasil ", "Data berhasil dihapus.", "success").then(
+        (result) => {
+          if (result.isConfirmed) {
+            window.location.reload();
+          }
+        }
+      );
+      dispatch({
+        type: DELETE_TRIVIA_QUESTION_BANKS_RESET,
+      });
+    }
+  }, [dispatch, isDeleted]);
+
+  const handlePagination = (pageNumber) => {
+    let link = `${router.pathname}?page=${pageNumber}`;
+    if (search) link = link.concat(`&keyword=${search}`);
+    if (limit) link = link.concat(`&limit=${limit}`);
+    router.push(link);
+  };
+
+  const handleSearch = () => {
+    let link = `${router.pathname}?page=1&keyword=${search}`;
+    if (limit) link = link.concat(`&limit=${limit}`);
+    router.push(link);
+  };
+
+  const handleLimit = (val) => {
+    setLimit(val);
+    router.push(`${router.pathname}?page=1&limit=${limit}`);
+  };
+
+  const handleDelete = (id) => {
+    Swal.fire({
+      title: "Apakah anda yakin ?",
+      text: "Data ini tidak bisa dikembalikan !",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya !",
+      cancelButtonText: "Batal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        dispatch(deleteTriviaQuestionBanks(id));
+      }
+    });
+  };
+
+  const onNewReset = () => {
+    router.replace("/subvit/trivia", undefined, { shallow: true });
+  };
 
   return (
     <PageWrapper>
@@ -53,6 +107,33 @@ const ListTrivia = () => {
               className="close"
               data-dismiss="alert"
               aria-label="Close"
+            >
+              <span aria-hidden="true">
+                <i className="ki ki-close"></i>
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        ""
+      )}
+
+      {success ? (
+        <div
+          className="alert alert-custom alert-light-success fade show mb-5"
+          role="alert"
+        >
+          <div className="alert-icon">
+            <i className="flaticon2-checkmark"></i>
+          </div>
+          <div className="alert-text">Berhasil Menyimpan Data</div>
+          <div className="alert-close">
+            <button
+              type="button"
+              className="close"
+              data-dismiss="alert"
+              aria-label="Close"
+              onClick={onNewReset}
             >
               <span aria-hidden="true">
                 <i className="ki ki-close"></i>
@@ -84,15 +165,25 @@ const ListTrivia = () => {
                       className="form-control"
                       placeholder="Search..."
                       id="kt_datatable_search_query"
+                      autoComplete="off"
+                      onChange={(e) => setSearch(e.target.value)}
                     />
                     <span>
                       <i className="flaticon2-search-1 text-muted"></i>
                     </span>
                   </div>
                 </div>
+                <div className="col-lg-1 col-xl-1">
+                  <button
+                    className="btn btn-sm btn-light-primary btn-block"
+                    onClick={handleSearch}
+                  >
+                    Cari
+                  </button>
+                </div>
 
                 <div className="col-lg-2 col-xl-2 ml-auto">
-                  <Link href="/subvit/trivia/tambah/step-1">
+                  <Link href="/subvit/trivia/tambah">
                     <a className="btn btn-sm btn-light-primary px-6 font-weight-bold btn-block ">
                       <i className="flaticon2-notepad"></i>
                       Tambah Soal
@@ -104,14 +195,7 @@ const ListTrivia = () => {
 
             <div className="table-page mt-5">
               <div className="table-responsive">
-                <div className="loading text-center justify-content-center">
-                  <BeatLoader
-                    color="#3699FF"
-                    loading={loading}
-                    css={override}
-                    size={10}
-                  />
-                </div>
+                <LoadingTable loading={loading} />
 
                 {loading === false ? (
                   <table className="table table-separate table-head-custom table-checkable">
@@ -122,54 +206,86 @@ const ListTrivia = () => {
                         <th>Tema</th>
                         <th>Bank Soal</th>
                         <th>Pelaksaan</th>
-                        <th>Kategori</th>
                         <th>Status</th>
                         <th>Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {subtance && subtance.length === 0
-                        ? ""
-                        : subtance &&
-                          subtance.map((subtance) => {
-                            return (
-                              <tr key={subtance.id}>
-                                <td className="align-middle text-center">
-                                  {subtance.no}
-                                </td>
-                                <td className="align-middle">
-                                  {subtance.academy}
-                                </td>
-                                <td className="align-middle">
-                                  {subtance.theme}
-                                </td>
-                                <td className="align-middle">200 Soal</td>
-                                <td className="align-middle">
-                                  {subtance.start_at}
-                                </td>
-                                <td className="align-middle">
-                                  {subtance.category}
-                                </td>
-                                <td className="align-middle">
-                                  <span className="badge badge-success">
+                      {trivia && trivia.list_trivia.length === 0 ? (
+                        <td className="align-middle text-center" colSpan={8}>
+                          Data Masih Kosong
+                        </td>
+                      ) : (
+                        trivia &&
+                        trivia.list_trivia.map((row, i) => {
+                          return (
+                            <tr key={row.id}>
+                              <td className="align-middle text-center">
+                                <span className="badge badge-secondary text-muted">
+                                  {i + 1 * (page * 5 || limit) - 4}
+                                </span>
+                              </td>
+                              <td className="align-middle">
+                                {row.academy.name}
+                              </td>
+                              <td className="align-middle">
+                                question
+                                {row.theme.name}
+                              </td>
+                              <td className="align-middle">
+                                {row.bank_soal} Soal
+                              </td>
+                              <td className="align-middle">{row.start_at}</td>
+                              <td className="align-middle">
+                                {row.status ? (
+                                  <span className="label label-inline label-light-success font-weight-bold">
                                     Publish
                                   </span>
-                                </td>
-                                <td className="align-middle">
-                                  <ButtonAction
-                                    icon="setting.svg"
-                                    link="/subvit/trivia/report/1"
+                                ) : (
+                                  <span className="label label-inline label-light-warning font-weight-bold">
+                                    Draft
+                                  </span>
+                                )}
+                              </td>
+                              <td className="align-middle">
+                                <ButtonAction
+                                  icon="setting.svg"
+                                  link={`/subvit/trivia/report?id=${row.id}`}
+                                  title="Report"
+                                />
+                                <ButtonAction
+                                  icon="write.svg"
+                                  link={`/subvit/trivia/edit?id=${row.id}`}
+                                  title="Edit"
+                                />
+                                <ButtonAction
+                                  icon="detail.svg"
+                                  link={`/subvit/trivia/${row.id}`}
+                                  title="Detail"
+                                />
+                                <button
+                                  onClick={() => handleDelete(row.id)}
+                                  className="btn mr-1"
+                                  style={{
+                                    background: "#F3F6F9",
+                                    borderRadius: "6px",
+                                  }}
+                                  data-toggle="tooltip"
+                                  data-placement="bottom"
+                                  title="Hapus"
+                                >
+                                  <Image
+                                    alt="button-action"
+                                    src={`/assets/icon/trash.svg`}
+                                    width={18}
+                                    height={18}
                                   />
-                                  <ButtonAction
-                                    icon="write.svg"
-                                    link="/subvit/trivia/1"
-                                  />
-                                  <ButtonAction icon="detail.svg" />
-                                  <ButtonAction icon="trash.svg" />
-                                </td>
-                              </tr>
-                            );
-                          })}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 ) : (
@@ -178,14 +294,14 @@ const ListTrivia = () => {
               </div>
 
               <div className="row">
-                {perPage < total && (
+                {trivia && trivia.perPage < trivia.total && (
                   <div className="table-pagination">
                     <Pagination
                       activePage={page}
-                      itemsCountPerPage={perPage}
-                      totalItemsCount={total}
+                      itemsCountPerPage={trivia.perPage}
+                      totalItemsCount={trivia.total}
                       pageRangeDisplayed={3}
-                      // onChange={handlePagination}
+                      onChange={handlePagination}
                       nextPageText={">"}
                       prevPageText={"<"}
                       firstPageText={"<<"}
@@ -195,7 +311,7 @@ const ListTrivia = () => {
                     />
                   </div>
                 )}
-                {total > 5 ? (
+                {trivia && trivia.total > 5 ? (
                   <div className="table-total ml-auto">
                     <div className="row">
                       <div className="col-4 mr-0 p-0">
@@ -208,6 +324,8 @@ const ListTrivia = () => {
                             borderColor: "#F3F6F9",
                             color: "#9E9E9E",
                           }}
+                          onChange={(e) => handleLimit(e.target.value)}
+                          onBlur={(e) => handleLimit(e.target.value)}
                         >
                           <option>5</option>
                           <option>10</option>
@@ -221,7 +339,7 @@ const ListTrivia = () => {
                           className="align-middle mt-3"
                           style={{ color: "#B5B5C3" }}
                         >
-                          Total Data 120
+                          Total Data {trivia.total}
                         </p>
                       </div>
                     </div>

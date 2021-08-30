@@ -5,36 +5,99 @@ import Image from "next/image";
 import { useRouter } from "next/router";
 
 import Pagination from "react-js-pagination";
-import { css } from "@emotion/react";
-import BeatLoader from "react-spinners/BeatLoader";
 
 import PageWrapper from "../../../wrapper/page.wrapper";
+import LoadingTable from "../../../LoadingTable";
 import ButtonAction from "../../../ButtonAction";
 
 import { useDispatch, useSelector } from "react-redux";
 import {
-  getAllSubtanceQuestionBanks,
+  deleteSurveyQuestionBanks,
   clearErrors,
-} from "/redux/actions/subvit/subtance.actions";
+} from "../../../../redux/actions/subvit/survey-question.actions";
+import { DELETE_SURVEY_QUESTION_BANKS_RESET } from "../../../../redux/types/subvit/survey-question.type";
 
 const ListSurvey = () => {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  const { loading, error, subtance, perPage, total } = useSelector(
-    (state) => state.allSubtanceQuestionBanks
+  const { loading, error, survey } = useSelector(
+    (state) => state.allSurveyQuestionBanks
   );
+  const {
+    loading: deleteLoading,
+    error: deleteError,
+    isDeleted,
+  } = useSelector((state) => state.deleteSurveyQuestionBanks);
 
-  let { page = 1 } = router.query;
+  let { page = 1, success } = router.query;
   page = Number(page);
 
-  useEffect(() => {
-    dispatch(getAllSubtanceQuestionBanks());
-  }, [dispatch]);
+  const [search, setSearch] = useState("");
+  const [limit, setLimit] = useState(null);
 
-  const override = css`
-    margin: 0 auto;
-  `;
+  useEffect(() => {
+    if (isDeleted) {
+      Swal.fire("Berhasil ", "Data berhasil dihapus.", "success").then(
+        (result) => {
+          if (result.isConfirmed) {
+            window.location.reload();
+          }
+        }
+      );
+      dispatch({
+        type: DELETE_SURVEY_QUESTION_BANKS_RESET,
+      });
+    }
+  }, [isDeleted, dispatch]);
+
+  const handlePagination = (pageNumber) => {
+    if (limit != null) {
+      router.push(`${router.pathname}?page=${pageNumber}&limit=${limit}`);
+    } else if (search != "" && limit != null) {
+      router.push(
+        `${router.pathname}?page=${pageNumber}&limit=${limit}&keyword=${search}`
+      );
+    } else if (search != "") {
+      router.push(`${router.pathname}?page=${pageNumber}&keyword=${search}`);
+    } else {
+      router.push(`${router.pathname}?page=${pageNumber}`);
+    }
+  };
+
+  const handleSearch = () => {
+    if (limit != null) {
+      router.push(`${router.pathname}?page=1&keyword=${search}&limit=${limit}`);
+    } else {
+      router.push(`${router.pathname}?page=1&keyword=${search}`);
+    }
+  };
+
+  const handleLimit = (val) => {
+    setLimit(val);
+    router.push(`${router.pathname}?page=1&limit=${val}`);
+  };
+
+  const handleDelete = (id) => {
+    Swal.fire({
+      title: "Apakah anda yakin ?",
+      text: "Data ini tidak bisa dikembalikan !",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya !",
+      cancelButtonText: "Batal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        dispatch(deleteSurveyQuestionBanks(id));
+      }
+    });
+  };
+
+  const onNewReset = () => {
+    router.replace("/subvit/survey", undefined, { shallow: true });
+  };
 
   return (
     <PageWrapper>
@@ -53,6 +116,33 @@ const ListSurvey = () => {
               className="close"
               data-dismiss="alert"
               aria-label="Close"
+            >
+              <span aria-hidden="true">
+                <i className="ki ki-close"></i>
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        ""
+      )}
+
+      {success ? (
+        <div
+          className="alert alert-custom alert-light-success fade show mb-5"
+          role="alert"
+        >
+          <div className="alert-icon">
+            <i className="flaticon2-checkmark"></i>
+          </div>
+          <div className="alert-text">Berhasil Menyimpan Data</div>
+          <div className="alert-close">
+            <button
+              type="button"
+              className="close"
+              data-dismiss="alert"
+              aria-label="Close"
+              onClick={onNewReset}
             >
               <span aria-hidden="true">
                 <i className="ki ki-close"></i>
@@ -84,15 +174,25 @@ const ListSurvey = () => {
                       className="form-control"
                       placeholder="Search..."
                       id="kt_datatable_search_query"
+                      autoComplete="off"
+                      onChange={(e) => setSearch(e.target.value)}
                     />
                     <span>
                       <i className="flaticon2-search-1 text-muted"></i>
                     </span>
                   </div>
                 </div>
+                <div className="col-lg-1 col-xl-1">
+                  <button
+                    className="btn btn-sm btn-light-primary btn-block"
+                    onClick={handleSearch}
+                  >
+                    Cari
+                  </button>
+                </div>
 
                 <div className="col-lg-2 col-xl-2 ml-auto">
-                  <Link href="/subvit/survey/tambah/step-1">
+                  <Link href="/subvit/survey/tambah">
                     <a className="btn btn-sm btn-light-primary px-6 font-weight-bold btn-block ">
                       <i className="flaticon2-notepad"></i>
                       Tambah Soal
@@ -104,14 +204,7 @@ const ListSurvey = () => {
 
             <div className="table-page mt-5">
               <div className="table-responsive">
-                <div className="loading text-center justify-content-center">
-                  <BeatLoader
-                    color="#3699FF"
-                    loading={loading}
-                    css={override}
-                    size={10}
-                  />
-                </div>
+                <LoadingTable loading={loading} />
 
                 {loading === false ? (
                   <table className="table table-separate table-head-custom table-checkable">
@@ -122,54 +215,83 @@ const ListSurvey = () => {
                         <th>Tema</th>
                         <th>Bank Soal</th>
                         <th>Pelaksaan</th>
-                        <th>Kategori</th>
                         <th>Status</th>
                         <th>Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {subtance && subtance.length === 0
-                        ? ""
-                        : subtance &&
-                        subtance.map((subtance) => {
+                      {survey && survey.list_survey.length === 0 ? (
+                        <td className="align-middle text-center" colSpan={8}>
+                          Data Masih Kosong
+                        </td>
+                      ) : (
+                        survey &&
+                        survey.list_survey.map((row, i) => {
                           return (
-                            <tr key={subtance.id}>
+                            <tr key={row.id}>
                               <td className="align-middle text-center">
-                                {subtance.no}
-                              </td>
-                              <td className="align-middle">
-                                {subtance.academy}
-                              </td>
-                              <td className="align-middle">
-                                {subtance.theme}
-                              </td>
-                              <td className="align-middle">200 Soal</td>
-                              <td className="align-middle">
-                                {subtance.start_at}
-                              </td>
-                              <td className="align-middle">
-                                {subtance.category}
-                              </td>
-                              <td className="align-middle">
-                                <span className="badge badge-success">
-                                  Publish
+                                <span className="badge badge-secondary text-muted">
+                                  {i + 1 * (page * 5 || limit) - 4}
                                 </span>
+                              </td>
+                              <td className="align-middle">
+                                {row.academy.name}
+                              </td>
+                              <td className="align-middle">{row.theme.name}</td>
+                              <td className="align-middle">
+                                {row.bank_soal} Soal
+                              </td>
+                              <td className="align-middle">{row.start_at}</td>
+                              <td className="align-middle">
+                                {row.status ? (
+                                  <span className="label label-inline label-light-success font-weight-bold">
+                                    Publish
+                                  </span>
+                                ) : (
+                                  <span className="label label-inline label-light-warning font-weight-bold">
+                                    Draft
+                                  </span>
+                                )}
                               </td>
                               <td className="align-middle">
                                 <ButtonAction
                                   icon="setting.svg"
-                                  link="/subvit/survey/report/1"
+                                  link={`/subvit/survey/report?id=${row.id}`}
+                                  title="Report"
                                 />
                                 <ButtonAction
                                   icon="write.svg"
-                                  link="/subvit/survey/1"
+                                  link={`/subvit/survey/edit?id=${row.id}`}
+                                  title="Edit"
                                 />
-                                <ButtonAction icon="detail.svg" link='/subvit/survey/edit/step-1' />
-                                <ButtonAction icon="trash.svg" />
+                                <ButtonAction
+                                  icon="detail.svg"
+                                  link={`/subvit/survey/${row.id}`}
+                                  title="Detail"
+                                />
+                                <button
+                                  onClick={() => handleDelete(row.id)}
+                                  className="btn mr-1"
+                                  style={{
+                                    background: "#F3F6F9",
+                                    borderRadius: "6px",
+                                  }}
+                                  data-toggle="tooltip"
+                                  data-placement="bottom"
+                                  title="Hapus"
+                                >
+                                  <Image
+                                    alt="button-action"
+                                    src={`/assets/icon/trash.svg`}
+                                    width={18}
+                                    height={18}
+                                  />
+                                </button>
                               </td>
                             </tr>
                           );
-                        })}
+                        })
+                      )}
                     </tbody>
                   </table>
                 ) : (
@@ -178,14 +300,14 @@ const ListSurvey = () => {
               </div>
 
               <div className="row">
-                {perPage < total && (
+                {survey && survey.perPage < survey.total && (
                   <div className="table-pagination">
                     <Pagination
                       activePage={page}
-                      itemsCountPerPage={perPage}
-                      totalItemsCount={total}
+                      itemsCountPerPage={survey.perPage}
+                      totalItemsCount={survey.total}
                       pageRangeDisplayed={3}
-                      // onChange={handlePagination}
+                      onChange={handlePagination}
                       nextPageText={">"}
                       prevPageText={"<"}
                       firstPageText={"<<"}
@@ -195,7 +317,7 @@ const ListSurvey = () => {
                     />
                   </div>
                 )}
-                {total > 5 ? (
+                {survey && survey.total > 5 ? (
                   <div className="table-total ml-auto">
                     <div className="row">
                       <div className="col-4 mr-0 p-0">
@@ -208,12 +330,13 @@ const ListSurvey = () => {
                             borderColor: "#F3F6F9",
                             color: "#9E9E9E",
                           }}
+                          onChange={(e) => handleLimit(e.target.value)}
+                          onBlur={(e) => handleLimit(e.target.value)}
                         >
-                          <option>5</option>
-                          <option>10</option>
-                          <option>30</option>
-                          <option>40</option>
-                          <option>50</option>
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                          <option value="15">15</option>
+                          <option value="20">20</option>
                         </select>
                       </div>
                       <div className="col-8 my-auto">
@@ -221,7 +344,7 @@ const ListSurvey = () => {
                           className="align-middle mt-3"
                           style={{ color: "#B5B5C3" }}
                         >
-                          Total Data 120
+                          Total Data {survey.total}
                         </p>
                       </div>
                     </div>

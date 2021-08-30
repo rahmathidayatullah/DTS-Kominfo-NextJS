@@ -5,8 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/router";
 
 import Pagination from "react-js-pagination";
-import { css } from "@emotion/react";
-import BeatLoader from "react-spinners/BeatLoader";
+import LoadingTable from "../../../LoadingTable";
 
 import PageWrapper from "../../../wrapper/page.wrapper";
 import ButtonAction from "../../../ButtonAction";
@@ -22,20 +21,52 @@ const ReportTrivia = () => {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  const { loading, error, subtance, perPage, total } = useSelector(
-    (state) => state.allSubtanceQuestionBanks
+  const { loading, error, trivia } = useSelector(
+    (state) => state.allReportTriviaQuestionBanks
   );
 
-  let { page = 1 } = router.query;
+  let { page = 1, id } = router.query;
   page = Number(page);
 
-  useEffect(() => {
-    dispatch(getAllSubtanceQuestionBanks());
-  }, [dispatch]);
+  const [search, setSearch] = useState("");
+  const [limit, setLimit] = useState(null);
+  const [publishValue, setPublishValue] = useState(null);
 
-  const override = css`
-    margin: 0 auto;
-  `;
+  // useEffect(() => {
+  // }, [dispatch]);
+
+  const handlePagination = (pageNumber) => {
+    let link = `${router.pathname}?id=${id}&page=${pageNumber}`;
+    if (limit) link = link.concat(`&limit=${limit}`);
+    if (search) link = link.concat(`&keyword=${search}`);
+    router.push(link);
+  };
+
+  const handleSearch = () => {
+    let link = `${router.pathname}?id=${id}`;
+    if (search) link = link.concat(`&keyword=${search}`);
+    if (limit) link = link.concat(`&limit=${limit}`);
+    router.push(link);
+  };
+
+  const handleLimit = (val) => {
+    setLimit(val);
+  };
+
+  const handleExportReport = async () => {
+    let link = `http://dts-subvit-dev.majapahit.id/api/trivia-question-banks/report/export/${id}`;
+    if (search) link = link.concat(`&keyword=${search}`);
+    await axios.get(link).then((res) => {
+      window.location.href = res.data.data;
+    });
+  };
+
+  const handlePublish = (val) => {
+    setPublishValue(val);
+    let link = `${router.pathname}?id=${id}&page=${1}&card=${val}`;
+    if (search) link = link.concat(`&keyword=${search}`);
+    router.push(link);
+  };
 
   return (
     <PageWrapper>
@@ -65,48 +96,48 @@ const ReportTrivia = () => {
         ""
       )}
 
-      <div className="col-lg-12 col-md-3">
+      <div className="col-lg-12 col-md-12">
         <div className="row">
           <CardPage
             background="bg-light-info"
             icon="orang-tambah-purple.svg"
             color="#8A50FC"
-            value="90"
+            value={trivia.data.total_peserta}
             titleValue=""
             title="Total Peserta"
+            publishedVal=""
+            routePublish={() => handlePublish("")}
           />
           <CardPage
             background="bg-light-success"
             icon="done-circle.svg"
             color="#0BB783"
-            value="64"
+            value={trivia.data.sudah_mengerjakan}
             titleValue=""
             title="Sudah Mengerjakan"
+            publishedVal="sudah-mengerjakan"
+            routePublish={() => handlePublish("sudah-mengerjakan")}
           />
           <CardPage
             background="bg-light-warning"
             icon="book-open.svg"
             color="#634100"
-            value="64"
+            value={trivia.data.sedang_mengerjakan}
             titleValue=""
             title="Sedang Mengerjakan"
+            publishedVal="sedang-mengerjakan"
+            routePublish={() => handlePublish("sedang-mengerjakan")}
           />
           <CardPage
             background="bg-accent-info"
             icon="mail-purple.svg"
             color="#663259"
-            value="64"
+            value={trivia.data.belum_mengerjakan}
             titleValue=""
             title="Belum Mengerjakan"
+            publishedVal="belum-mengerjakan"
+            routePublish={() => handlePublish("belum-mengerjakan")}
           />
-          {/* <CardPage
-            background="bg-light-danger"
-            icon="kotak-kotak-red.svg"
-            color="#F65464"
-            value="64"
-            titleValue=""
-            title="Gagal Test"
-          /> */}
         </div>
       </div>
 
@@ -115,12 +146,21 @@ const ReportTrivia = () => {
           <div className="card-header border-0 align-items-center row">
             <div className="col-lg-10 col-xl-10">
               <h3 className="card-title font-weight-bolder text-dark">
-                Report Trivia
+                Report Trivia{" "}
+                {publishValue === null || ""
+                  ? ""
+                  : `- ${
+                      publishValue.charAt(0).toUpperCase() +
+                      publishValue.slice(1).replace("-", " ")
+                    }`}
               </h3>
               <p className="text-muted">FGA - Cloud Computing</p>
             </div>
             <div className="col-lg-2 col-xl-2">
-              <button className="btn btn-sm btn-light-success px-6 font-weight-bold btn-block ">
+              <button
+                className="btn btn-sm btn-light-success px-6 font-weight-bold btn-block "
+                onClick={handleExportReport}
+              >
                 Export .CSV
               </button>
             </div>
@@ -128,7 +168,7 @@ const ReportTrivia = () => {
           </div>
 
           <div className="card-body pt-0">
-            <div className="table-filter">
+            <div className="table-filter mb-5">
               <div className="row align-items-center">
                 <div className="col-lg-10 col-xl-10">
                   <div className="input-icon">
@@ -138,6 +178,8 @@ const ReportTrivia = () => {
                       className="form-control"
                       placeholder="Search..."
                       id="kt_datatable_search_query"
+                      autoComplete="off"
+                      onChange={(e) => setSearch(e.target.value)}
                     />
                     <span>
                       <i className="flaticon2-search-1 text-muted"></i>
@@ -146,58 +188,19 @@ const ReportTrivia = () => {
                 </div>
 
                 <div className="col-lg-2 col-xl-2">
-                  <button className="btn btn-sm btn-light-primary px-6 font-weight-bold btn-block ">
+                  <button
+                    className="btn btn-sm btn-light-primary px-6 font-weight-bold btn-block"
+                    onClick={handleSearch}
+                  >
                     Cari
                   </button>
-                </div>
-              </div>
-
-              <div className="row align-items-center my-5">
-                <div className="col-lg-3 col-xl-3 ">
-                  <div className="form-group mb-0">
-                    <select className="form-control">
-                      <option>Semua</option>
-                    </select>
-                    <small className="text-muted mt-1 p-0">
-                      Filter by Pelatihan
-                    </small>
-                  </div>
-                </div>
-
-                <div className="col-lg-3 col-xl-3 ">
-                  <div className="form-group mb-0">
-                    <select className="form-control">
-                      <option>Semua</option>
-                    </select>
-                    <small className="text-muted mt-1 p-0">
-                      Filter by Status
-                    </small>
-                  </div>
-                </div>
-
-                <div className="col-lg-3 col-xl-3 ">
-                  <div className="form-group mb-0">
-                    <select className="form-control">
-                      <option>Semua</option>
-                    </select>
-                    <small className="text-muted mt-1 p-0">
-                      Filter by Nilai
-                    </small>
-                  </div>
                 </div>
               </div>
             </div>
 
             <div className="table-page">
               <div className="table-responsive">
-                <div className="loading text-center justify-content-center">
-                  <BeatLoader
-                    color="#3699FF"
-                    loading={loading}
-                    css={override}
-                    size={10}
-                  />
-                </div>
+                <LoadingTable loading={loading} />
 
                 {loading === false ? (
                   <table className="table table-separate table-head-custom table-checkable">
@@ -206,104 +209,67 @@ const ReportTrivia = () => {
                         <th className="text-center">No</th>
                         <th>Peserta Test</th>
                         <th>Pelatihan</th>
-                        <th>Nilai</th>
                         <th>Total Pengerjaan</th>
-                        <th>Jawaban</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {/* {
-                                                subtance && subtance.length === 0 ?
-                                                    '' :
-                                                    subtance && subtance.map((subtance) => {
-                                                        return <tr key={subtance.id}>
+                      {trivia && trivia.data.reports.length === 0 ? (
+                        <tr>
+                          <td className="text-center" colSpan={7}>
+                            Data Masih Kosong
+                          </td>
+                        </tr>
+                      ) : (
+                        trivia &&
+                        trivia.data.reports.map((row, i) => {
+                          return (
+                            <tr key={row.id}>
+                              <td className="align-middle text-center">
+                                <p className="badge badge-secondary text-muted">
+                                  {i + 1 * (page * 5 || limit) - 4}
+                                </p>
+                              </td>
+                              <td className="align-middle">
+                                <div>
+                                  <p className="my-0 h6">{row.name}</p>
+                                  <p className="my-0">{row.email}</p>
+                                  <p className="my-0">{row.no_telp}</p>
+                                </div>
+                              </td>
+                              <td className="align-middle">
+                                <p className="h6">{row.training.name}</p>
+                              </td>
+                              <td className="align-middle">
+                                <div>
+                                  <p className="my-0 h6">
+                                    {row.total_workmanship_date}
+                                  </p>
+                                  <p className="my-0">
+                                    {row.total_workmanship_time}
+                                  </p>
+                                </div>
+                              </td>
 
-                                                            <td className='align-middle text-center'>{subtance.no}</td>
-                                                            <td className='align-middle'>{subtance.academy}</td>
-                                                            <td className='align-middle'>{subtance.theme}</td>
-                                                            <td className='align-middle'>200 Soal</td>
-                                                            <td className='align-middle'>{subtance.start_at}</td>
-                                                            <td className='align-middle'>{subtance.category}</td>
-                                                            <td className='align-middle'><span className="badge badge-success">Publish</span></td>
-                                                            <td className='align-middle'>
-                                                                <ButtonAction icon='setting.svg' />
-                                                                <ButtonAction icon='write.svg' />
-                                                                <ButtonAction icon='detail.svg' />
-                                                                <ButtonAction icon='trash.svg' />
-                                                            </td>
-                                                        </tr>
-
-                                                    })
-                                            } */}
-                      <tr>
-                        <td className="align-middle text-center">
-                          <p className="badge badge-secondary h6">1</p>
-                        </td>
-                        <td className="align-middle">
-                          <div>
-                            <p className="my-0 h6">Dimas Rifai Lombu</p>
-                            <p className="my-0">dimas@mail.com</p>
-                            <p className="my-0">202309182982998</p>
-                          </div>
-                        </td>
-                        <td className="align-middle">
-                          <p className="h6">Cloud Computing</p>
-                        </td>
-                        <td className="align-middle">
-                          <p className="h6">60.00</p>
-                        </td>
-                        <td className="align-middle">
-                          <div>
-                            <p className="my-0 h6">05/28/2021</p>
-                            <p className="my-0">36:23</p>
-                          </div>
-                        </td>
-                        <td className="align-middle">
-                          <div>
-                            <p className="my-0">Benar: 20 Jawaban</p>
-                            <p className="my-0">Salah: 20 Jawaban</p>
-                            <p className="my-0">Jumlah: 40 Jawaban</p>
-                          </div>
-                        </td>
-                        <td className="align-middle">
-                          <p className="badge badge-success">Diterima</p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="align-middle text-center">
-                          <p className="badge badge-secondary h6">2</p>
-                        </td>
-                        <td className="align-middle">
-                          <div>
-                            <p className="my-0 h6">Dimas Rifai Lombu</p>
-                            <p className="my-0">dimas@mail.com</p>
-                            <p className="my-0">202309182982998</p>
-                          </div>
-                        </td>
-                        <td className="align-middle">
-                          <p className="h6">Cloud Computing</p>
-                        </td>
-                        <td className="align-middle">
-                          <p className="h6">60.00</p>
-                        </td>
-                        <td className="align-middle">
-                          <div>
-                            <p className="my-0 h6">05/28/2021</p>
-                            <p className="my-0">36:23</p>
-                          </div>
-                        </td>
-                        <td className="align-middle">
-                          <div>
-                            <p className="my-0">Benar: 20 Jawaban</p>
-                            <p className="my-0">Salah: 20 Jawaban</p>
-                            <p className="my-0">Jumlah: 40 Jawaban</p>
-                          </div>
-                        </td>
-                        <td className="align-middle">
-                          <p className="badge badge-danger">Ditolak</p>
-                        </td>
-                      </tr>
+                              <td className="align-middle">
+                                {row.status ? (
+                                  <td className="align-middle">
+                                    <span className="label label-inline label-light-success font-weight-bold">
+                                      Diterima
+                                    </span>
+                                  </td>
+                                ) : (
+                                  <td className="align-middle">
+                                    <span className="label label-inline label-light-danger font-weight-bold">
+                                      Ditolak
+                                    </span>
+                                  </td>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 ) : (
@@ -312,14 +278,14 @@ const ReportTrivia = () => {
               </div>
 
               <div className="row">
-                {perPage < total && (
+                {trivia && trivia.total > 5 && (
                   <div className="table-pagination">
                     <Pagination
                       activePage={page}
-                      itemsCountPerPage={perPage}
-                      totalItemsCount={total}
+                      itemsCountPerPage={trivia.perPage}
+                      totalItemsCount={trivia.total}
                       pageRangeDisplayed={3}
-                      // onChange={handlePagination}
+                      onChange={handlePagination}
                       nextPageText={">"}
                       prevPageText={"<"}
                       firstPageText={"<<"}
@@ -329,7 +295,7 @@ const ReportTrivia = () => {
                     />
                   </div>
                 )}
-                {total > 5 ? (
+                {trivia && trivia.total > 4 ? (
                   <div className="table-total ml-auto">
                     <div className="row">
                       <div className="col-4 mr-0 p-0">
@@ -342,12 +308,13 @@ const ReportTrivia = () => {
                             borderColor: "#F3F6F9",
                             color: "#9E9E9E",
                           }}
+                          onChange={(e) => handleLimit(e.target.value)}
+                          onBlur={(e) => handleLimit(e.target.value)}
                         >
-                          <option>5</option>
-                          <option>10</option>
-                          <option>30</option>
-                          <option>40</option>
-                          <option>50</option>
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                          <option value="15">15</option>
+                          <option value="20">20</option>
                         </select>
                       </div>
                       <div className="col-8 my-auto">
@@ -355,7 +322,7 @@ const ReportTrivia = () => {
                           className="align-middle mt-3"
                           style={{ color: "#B5B5C3" }}
                         >
-                          Total Data 120
+                          Total Data {trivia.total}
                         </p>
                       </div>
                     </div>
